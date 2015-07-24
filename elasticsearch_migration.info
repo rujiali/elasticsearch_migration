@@ -1,0 +1,7 @@
+name = Elasticsearch migration
+description = Migrate Drupal field from MySQL to Elasticsearch.
+package = Elastic
+core = 7.x
+files[] = elasticsearch_migration.module
+files[] = elasticsearch_migration.admin.inc
+files[] = elasticsearch_migration_batch.inc

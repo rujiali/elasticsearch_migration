@@ -1,0 +1,83 @@
+<?php
+/**
+ * @file
+ *
+ */
+
+require 'vendor/autoload.php';
+
+/**
+ * Implements hook_menu().
+ */
+function elasticsearch_migration_menu() {
+  $items = array();
+
+  $items['admin/config/services/elasticsearch_migration'] = array(
+    'title' => 'Elasticsearch migration',
+    'description' => 'Set up elasticsearch server you want to migrate to.',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('elasticsearch_migration_form'),
+    'access arguments' => array('administer elasticsearch migration'),
+    'file' => 'elasticsearch_migration.admin.inc',
+    'file path' => drupal_get_path('module', 'elasticsearch_migration'),
+  );
+
+  return $items;
+}
+
+/**
+ * Implements hook_permission().
+ */
+function elasticsearch_migration_permission() {
+  return array(
+    'administer elastisearch migration' => array(
+      'title' => t('Administer elasticsearch migration'),
+      'description' => t('Perform a migration to elasticsearch.'),
+    ),
+  );
+}
+
+/**
+ * @todo: Write validation for the form.
+ */
+
+/**
+ * Migration form submit callback.
+ */
+function elasticsearch_migration_form_submit($form, &$form_state) {
+
+  // With each pass through the callback, retrieve the next group of nids.
+  // todo: for IBIS, add state != 'raw' in.
+  $query = new EntityFieldQuery();
+
+  $query->entityCondition('entity_type', 'node')
+    ->entityCondition('bundle', 'article')
+    ->propertyCondition('status', NODE_PUBLISHED);
+
+  $result = $query->execute();
+
+  if (isset($result['node'])) {
+    $nids = array_keys($result['node']);
+  }
+
+  $batch = array(
+    'operations' => array(
+      array(
+        'batch_elasticsearch_process',
+        array(
+          $form_state['values']['elasticsearch_host'],
+          $form_state['values']['elasticsearch_cluster'],
+          $form_state['values']['elasticsearch_content_type'],
+          $nids,
+        ),
+      ),
+    ),
+    'finished' => 'batch_elasticsearch_finished',
+    'title' => t('Migrating to elasticsearch ...'),
+    'init_message' => t('Migrating Batch is starting.'),
+    'progress_message' => t('Processed @current out of @total.'),
+    'error_message' => t('Migrating batch has encountered an error.'),
+    'file' => drupal_get_path('module', 'elasticsearch_migration') . '/elasticsearch_migration_batch.inc',
+  );
+  batch_set($batch);
+}
