@@ -1,7 +1,7 @@
 <?php
 /**
  * @file
- *
+ * The admin form for elasticsearch migration module.
  */
 
 /**

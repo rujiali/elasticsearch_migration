@@ -1,13 +1,15 @@
 <?php
 /**
+ * @file
+ * The batch API file.
+ */
+
+/**
  * Processing batch.
  */
 function batch_elasticsearch_process($host, $cluster, $type, $nids, &$context) {
-  // Set up elasticsearch server
-  $params['hosts'] = array('106.186.117.38:9200');
-  $params['logging'] = true;
-  $params['logPath'] = '/var/logs/elasticsearch/elasticsearch.log';
-  $params['logPermission'] = 0664;
+  // Connect to elasticsearch host.
+  $params['hosts'] = array($host);
   $client = new Elasticsearch\Client($params);
   if (!isset($context['sandbox']['progress'])) {
     $context['sandbox']['progress'] = 0;
@@ -22,7 +24,8 @@ function batch_elasticsearch_process($host, $cluster, $type, $nids, &$context) {
   $query->entityCondition('entity_type', 'node')
     ->entityCondition('bundle', 'article')
     ->propertyCondition('status', NODE_PUBLISHED)
-    ->propertyCondition('nid', $context['sandbox']['current_node'], '>');
+    ->propertyCondition('nid', $context['sandbox']['current_node'], '>')
+    ->range(0, $limit);
 
   $result = $query->execute();
 
@@ -49,6 +52,7 @@ function batch_elasticsearch_process($host, $cluster, $type, $nids, &$context) {
     $context['sandbox']['current_node'] = $nid;
     $context['message'] = t('Now processing %node', array('%node' => $node->title));
   }
+  unset($params['hosts']);
   $response = $client->bulk($params);
   if ($response['errors'] == TRUE) {
     $context['finish'] = 1;

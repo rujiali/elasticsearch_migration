@@ -1,7 +1,7 @@
 <?php
 /**
  * @file
- *
+ * Module file for elasticsearch migration module.
  */
 
 require 'vendor/autoload.php';
@@ -38,8 +38,19 @@ function elasticsearch_migration_permission() {
 }
 
 /**
- * @todo: Write validation for the form.
+ * Migration form validation.
  */
+function elasticsearch_migration_form_validate($form, &$form_state) {
+  // Check host.
+  $params['hosts'] = array($form_state['values']['elasticsearch_host']);
+  $client = new Elasticsearch\Client($params);
+  try {
+    $info = $client->info();
+  }
+  catch(Exception $e) {
+    form_set_error('elasticsearch_host', t('The host is not valid'));
+  }
+}
 
 /**
  * Migration form submit callback.
@@ -59,7 +70,6 @@ function elasticsearch_migration_form_submit($form, &$form_state) {
   if (isset($result['node'])) {
     $nids = array_keys($result['node']);
   }
-
   $batch = array(
     'operations' => array(
       array(
