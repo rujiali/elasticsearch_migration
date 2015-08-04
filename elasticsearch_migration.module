@@ -62,7 +62,7 @@ function elasticsearch_migration_form_submit($form, &$form_state) {
   $query = new EntityFieldQuery();
 
   $query->entityCondition('entity_type', 'node')
-    ->entityCondition('bundle', 'article')
+    ->entityCondition('bundle', $form_state['values']['elasticsearch_content_type'])
     ->propertyCondition('status', NODE_PUBLISHED);
 
   $result = $query->execute();
@@ -70,6 +70,59 @@ function elasticsearch_migration_form_submit($form, &$form_state) {
   if (isset($result['node'])) {
     $nids = array_keys($result['node']);
   }
+
+  // Connect to elasticsearch host.
+  $params['hosts'] = array($form_state['values']['elasticsearch_host']);
+  $client = new Elasticsearch\Client($params);
+  // Set up index.
+  $indexParams['index']  = $form_state['values']['elasticsearch_cluster'];
+
+  // Index Mapping. Given the fact drupal node_load only load strings out, we
+  // need to force convert strings to int for some fields.
+  $myTypeMapping = array(
+    'dynamic_templates' => array(
+      array(
+        'ids' => array(
+          "match" => "*id",
+          "match_mapping_type" => "string",
+          "mapping" => array(
+            "type" => "integer"
+          )
+        )
+      ),
+      array(
+        'timestamp' => array(
+          "match" => "*timestamp",
+          "match_mapping_type" => "string",
+          "mapping" => array(
+            "type" => "integer"
+          )
+        )
+      ),
+      array(
+        'created' => array(
+          "match" => "*created",
+          "match_mapping_type" => "string",
+          "mapping" => array(
+            "type" => "integer"
+          )
+        )
+      ),
+      array(
+        'changed' => array(
+          "match" => "*changed",
+          "match_mapping_type" => "string",
+          "mapping" => array(
+            "type" => "integer"
+          )
+        )
+      ),
+    )
+  );
+
+  $indexParams['body']['mappings'][$form_state['values']['elasticsearch_content_type']] = $myTypeMapping;
+// Create the index
+  $client->indices()->create($indexParams);
   $batch = array(
     'operations' => array(
       array(

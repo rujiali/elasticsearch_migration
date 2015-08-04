@@ -17,12 +17,12 @@ function batch_elasticsearch_process($host, $cluster, $type, $nids, &$context) {
     $context['sandbox']['max'] = count($nids);
   }
   // Get all the node from the selected content type.
-  $limit = 10;
+  $limit = 100;
 
   $query = new EntityFieldQuery();
 
   $query->entityCondition('entity_type', 'node')
-    ->entityCondition('bundle', 'article')
+    ->entityCondition('bundle', $type)
     ->propertyCondition('status', NODE_PUBLISHED)
     ->propertyCondition('nid', $context['sandbox']['current_node'], '>')
     ->range(0, $limit);
@@ -35,6 +35,7 @@ function batch_elasticsearch_process($host, $cluster, $type, $nids, &$context) {
   foreach ($nids as $nid) {
     $node = node_load($nid);
     $body = get_object_vars($node);
+
     $params['index'] = $cluster;
     $params['type'] = $type;
     $params['body'][] = array(
@@ -42,7 +43,6 @@ function batch_elasticsearch_process($host, $cluster, $type, $nids, &$context) {
         '_id' => $body['nid'],
       )
     );
-    unset($body['nid']);
     $params['body'][] = $body;
 
     $context['results'][] = check_plain($node->title);
@@ -72,7 +72,6 @@ function batch_elasticsearch_finished($success, $results, $operations) {
   if ($success) {
     // Here we do something meaningful with the results.
     $message = t('@count items successfully processed:', array('@count' => count($results)));
-    $message .= theme('item_list', array('items' => $results));
     drupal_set_message($message);
   }
   else {
